@@ -7,12 +7,13 @@ import Coshan.ControlFlow
 import Coshan.Disassembler
 import qualified Coshan.Reporting as R
 import Data.Foldable (foldl')
+import Data.List (intersect)
 
 checkWaitStateHazards :: DisassembledKernel -> CFG -> [R.Error]
 checkWaitStateHazards _ (CFG bbs) = go [] bbs
   where
     go log [] = log
-    go log (bb : rest) = go (log ++ analyzeBb (CFG bbs) bb [rwLaneMatcher]) rest
+    go log (bb : rest) = go (log ++ analyzeBb (CFG bbs) bb [rwLaneMatcher, gfx9XXrwWaitMatcher]) rest
 
 data WaitStatesIterCtx = WaitStatesIterCtx
   { reverseBbInsts :: [(PC, Instruction)], -- instructions we walk over on this iteration
@@ -36,6 +37,19 @@ rwLaneMatcher = \case
           \case
             -- Only VOP3B instructions perform VALU operations with an SGPR destination reg
             Instruction ("v" : _) [_vdst, Osgpr sdst, _src0, _src1] -> selectorGprIdx `elem` sdst
+            _ -> False
+        )
+  _ -> Nothing
+
+gfx9XXrwWaitMatcher :: DependentInstructionMatcher
+gfx9XXrwWaitMatcher = \case
+  Instruction ("v" : _vopSecond : _) (_dstSecond : Ovgpr vsrcSecond : _)
+    | _vopSecond == "readlane" || _vopSecond == "readfirstlane" ->
+      Just
+        ( "A v_readlane/v_readfisrtlane instruction requires 1 wait states after v instruction if VDST of first instruction is the same as VSRC of the second.",
+          WaitStates 1,
+          \case
+            Instruction ("v" : vopFirst : _) (Ovgpr vdstFirst : _) -> intersect vsrcSecond vdstFirst /= []
             _ -> False
         )
   _ -> Nothing
