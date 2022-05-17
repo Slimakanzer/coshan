@@ -26,7 +26,7 @@ data Opts = Opts
 opts :: Opts
 opts =
   Opts
-    { optCpu = "gfx900" &= explicit &= name "mcpu" &= typ "gfx900" &= help "Target CPU type for disassembly (run `llc -march=amdgcn -mcpu=help` for a list of available CPUs)",
+    { optCpu = "gfx90a" &= explicit &= name "mcpu" &= typ "gfx90a" &= help "Target CPU type for disassembly (run `llc -march=amdgcn -mcpu=help` for a list of available CPUs)",
       optTriple = "amdgcn--amdhsa" &= explicit &= name "triple" &= typ "amdgcn--amdhsa" &= help "Target triple for disassembly",
       optCo = def &= argPos 0 &= typFile,
       optDisasm = def &= explicit &= name "disasm" &= help "Print disassembled shader code and exit",
